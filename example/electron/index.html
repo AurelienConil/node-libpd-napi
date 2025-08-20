@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>node-libpd-napi example</title>
+    <style>
+      body { font-family: -apple-system, system-ui, sans-serif; padding: 24px; }
+      code { padding: 2px 6px; background: #f2f2f2; border-radius: 4px; }
+    </style>
+  </head>
+  <body>
+    <h1>node-libpd-napi + Electron</h1>
+    <div id="status"></div>
+    <script>
+      const el = document.getElementById('status')
+      if (window.libpd?.test && window.libpd.test()) {
+        el.textContent = 'Addon loaded: PdEngine available.'
+      } else if (window.libpd?.error) {
+        el.textContent = 'Addon failed to load: ' + window.libpd.error
+      } else {
+        el.textContent = 'Addon not available.'
+      }
+    </script>
+  </body>
+</html>

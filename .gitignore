@@ -1,0 +1,10 @@
+build/
+node_modules/
+*.log
+.DS_Store
+.CMakeCache.txt
+cmake-build-*/
+/build
+/lib
+/dist
+example/electron/node_modules/
