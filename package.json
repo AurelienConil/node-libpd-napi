@@ -1,31 +1,31 @@
 {
-  "name": "node-libpd-napi",
-  "version": "0.1.0",
-  "description": "Modern N-API bindings for libpd with optional miniaudio backend, Electron-ready (CMake + cmake-js)",
-  "main": "index.js",
-  "gypfile": false,
-  "scripts": {
-    "configure": "cmake-js configure",
-    "build": "cmake-js compile",
-    "rebuild": "cmake-js rebuild",
-    "clean": "cmake-js clean",
-    "build:electron": "cmake-js compile -r electron",
-  "example:electron": "npm run build && cd example/electron && npm install && npm start",
-  "test:smoke": "npm run build && node -e \"console.log(require('./').PdEngine ? 'OK' : 'FAIL')\""
-  },
-  "keywords": [
-    "libpd",
-    "puredata",
-    "napi",
-    "node-addon-api",
-    "electron",
-    "miniaudio"
-  ],
-  "author": "",
-  "license": "MIT",
-  "devDependencies": {
-    "cmake-js": "^7.3.0",
-    "node-addon-api": "^8.2.1",
-  "bindings": "^1.5.0"
-  }
+    "name": "node-libpd-napi",
+    "version": "0.1.0",
+    "description": "Modern N-API bindings for libpd with optional miniaudio backend, Electron-ready (CMake + cmake-js)",
+    "main": "index.js",
+    "gypfile": false,
+    "scripts": {
+        "configure": "cmake-js configure",
+        "build": "cmake-js compile",
+        "rebuild": "cmake-js rebuild",
+        "clean": "cmake-js clean",
+        "build:electron": "cmake-js compile -r electron",
+        "example:electron": "npm run build && cd example/electron && npm install && npm start",
+        "test:smoke": "npm run build && node -e \"console.log(require('./').PdEngine ? 'OK' : 'FAIL')\""
+    },
+    "keywords": [
+        "libpd",
+        "puredata",
+        "napi",
+        "node-addon-api",
+        "electron",
+        "miniaudio"
+    ],
+    "author": "",
+    "license": "MIT",
+    "devDependencies": {
+        "cmake-js": "^7.3.0",
+        "node-addon-api": "^8.2.1",
+        "bindings": "^1.5.0"
+    }
 }
