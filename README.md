@@ -61,7 +61,15 @@ Extend `src/pd_engine.cc` to call libpd init/open/close and wire the audio callb
 
 ```js
 const { PdEngine } = require('node-libpd-napi')
-const pd = new PdEngine()
+
+// Initialize PdEngine with audio configuration
+const pd = new PdEngine({
+  sampleRate: 48000,
+  blockSize: 64,  // Equivalent to "ticks" in original node-libpd (1 tick = 64 samples)
+  channelsOut: 2, // Number of output channels
+  channelsIn: 0   // Number of input channels
+})
+
 await pd.start() // start audio
 await pd.openPatch('path/to/patch.pd')
 pd.sendBang('start')

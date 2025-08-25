@@ -21,13 +21,6 @@
         }
     })
 
-        // Try to open default patch (handled in main at startup; this is a no-op fallback)
-        ; (async () => {
-            try {
-                await window.libpd.openPatch('patch.pd')
-                log('Patch opened: patches/patch.pd')
-            } catch (e) {
-                log('Waiting for patch... Put your file at patches/patch.pd')
-            }
-        })()
+    // Afficher un message simple
+    log('Coucou ! L\'audio est géré par le processus principal.')
 })()

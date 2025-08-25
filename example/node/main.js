@@ -13,7 +13,12 @@ try {
 
     // Créer une instance du moteur PureData
     console.log('Création d\'une instance de PdEngine...');
-    const engine = new addon.PdEngine();
+    const engine = new addon.PdEngine({
+        sampleRate: 48000,
+        blockSize: 1024, // Configure la taille du buffer audio dans miniaudio
+        channelsOut: 2,
+        channelsIn: 0
+    });
     console.log('Instance créée avec succès!');
 
     // Démarrer le moteur audio

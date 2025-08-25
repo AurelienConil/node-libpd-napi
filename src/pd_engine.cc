@@ -69,9 +69,26 @@ Napi::Value PdEngine::start(const Napi::CallbackInfo &info)
 #ifdef HAVE_LIBPD
     libpd_init();
     libpd_init_audio(channelsIn_, channelsOut_, sampleRate_);
+
+    // Calculer le nombre de ticks (1 tick = 64 samples dans PureData)
+    int numTicks = blockSize_ / 64;
+    if (numTicks < 1)
+        numTicks = 1; // Au moins 1 tick
+
+    // Ajuster blockSize_ pour qu'il soit un multiple de 64
+    blockSize_ = numTicks * 64;
+
+    // Configurer la taille de bloc via les messages appropriés
+    // Note: le paramètre "ticks" est souvent utilisé dans libpd pour le traitement audio
+    // Pour PureData natif, on peut utiliser "-blocksize" à la place
+
+    // Activer le traitement audio
     libpd_start_message(1);
-    libpd_add_float((float)blockSize_);
-    libpd_finish_message("pd", "blocksize");
+    libpd_add_float(1.0f);
+    libpd_finish_message("pd", "dsp");
+
+    printf("Pure Data initialized with: blockSize=%d samples (buffer %d ms), sampleRate=%d, channels in/out=%d/%d\n",
+           blockSize_, (blockSize_ * 1000) / sampleRate_, sampleRate_, channelsIn_, channelsOut_);
 #endif
 
 #ifdef HAVE_MINIAUDIO
@@ -83,6 +100,8 @@ Napi::Value PdEngine::start(const Napi::CallbackInfo &info)
     config.playback.format = ma_format_f32;
     config.playback.channels = s_channels;
     config.sampleRate = s_sampleRate;
+    config.periodSizeInFrames = blockSize_; // Configurer la taille du buffer audio
+    config.pUserData = this;                // Passer l'instance PdEngine au callback
 
     config.dataCallback = [](ma_device *pDevice, void *pOutput, const void *pInput, ma_uint32 frameCount)
     {
@@ -90,9 +109,36 @@ Napi::Value PdEngine::start(const Napi::CallbackInfo &info)
         (void)pInput;
         float *out = (float *)pOutput;
 #ifdef HAVE_LIBPD
+        // Taille fixe d'un bloc PureData = 64 échantillons (standard dans PD)
+        const int pdBlockSize = 64;
+
+        // Allouer un buffer pour les résultats
+        // frameCount = nombre d'échantillons demandés par miniaudio
         std::vector<float> outBuf(frameCount * (size_t)s_channels, 0.0f);
-        libpd_process_float((int)(frameCount / 64), nullptr, outBuf.data());
-        std::memcpy(out, outBuf.data(), outBuf.size() * sizeof(float));
+
+        // Calculer le nombre de "ticks" PureData à traiter
+        // Un tick = 64 samples dans PureData
+        int ticks = frameCount / pdBlockSize;
+        if (ticks < 1)
+            ticks = 1;
+
+        // Traiter l'audio avec libpd exactement comme dans l'exemple pdtest.c
+        // Premier paramètre = nombre de ticks à traiter
+        // Deuxième paramètre = buffer d'entrée (nullptr car pas d'entrée)
+        // Troisième paramètre = buffer de sortie
+        if (libpd_process_float(ticks, nullptr, outBuf.data()) != 0)
+        {
+            // En cas d'erreur, produire un son silencieux
+            memset(out, 0, frameCount * s_channels * sizeof(float));
+            return;
+        }
+
+        // Appliquer un gain pour éviter la saturation
+        const float gain = 0.8f;
+        for (ma_uint32 i = 0; i < frameCount * s_channels; ++i)
+        {
+            out[i] = outBuf[i] * gain;
+        }
 #else
         static double phase = 0.0;
         double freq = 440.0;

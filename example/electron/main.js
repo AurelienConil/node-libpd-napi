@@ -33,7 +33,15 @@ app.whenReady().then(() => {
         console.log('Module chargé avec succès!')
 
         console.log('Création d\'une instance de PdEngine...')
-        engine = new addon.PdEngine()
+        // Configuration des paramètres audio
+        // Note: La taille du bloc audio est en nombre d'échantillons
+        // Avec un sampleRate de 48000, un blockSize de 1024 donne une latence de ~21ms
+        engine = new addon.PdEngine({
+            sampleRate: 48000,
+            blockSize: 1024, // Configure la taille du buffer audio dans miniaudio
+            channelsOut: 2,
+            channelsIn: 0
+        })
         console.log('Instance créée avec succès!')
 
         try {
@@ -60,7 +68,7 @@ app.whenReady().then(() => {
         console.error('Stack trace:', e.stack)
     }
 
-    // IPC API exposed to renderer
+    // API IPC exposée au renderer (uniquement le contrôle audio de base)
     ipcMain.handle('libpd:start', async () => {
         if (!engine) throw new Error('PdEngine unavailable')
         try { engine.start(); return true } catch (e) { console.error(e); return false }
@@ -69,6 +77,8 @@ app.whenReady().then(() => {
         if (!engine) return false
         try { engine.stop(); return true } catch (e) { console.error(e); return false }
     })
+
+    // Ces handlers ne sont pas utilisés actuellement mais peuvent être utiles pour d'autres interfaces
     ipcMain.handle('libpd:openPatch', async (_e, fileNameOrPath) => {
         if (!engine) throw new Error('PdEngine unavailable')
         const full = resolvePatchPath(fileNameOrPath)
@@ -81,19 +91,8 @@ app.whenReady().then(() => {
 
     createWindow()
 
-    // Open default patch at startup and start audio (server-only)
-    try {
-        if (engine) {
-            const defaultPatch = resolvePatchPath('patch.pd')
-            engine.openPatch(defaultPatch)
-            console.log('Opened patch at startup:', defaultPatch)
-            // Start audio automatically (no user gesture required in main process)
-            engine.start()
-            console.log('Audio started')
-        }
-    } catch (e) {
-        console.warn('Could not open default patch at startup:', e.message || e)
-    }
+    // Note: Le patch est déjà ouvert plus haut dans le code, pas besoin de le rouvrir ici
+    // L'audio est également déjà démarré
 
     app.on('activate', function () {
         if (BrowserWindow.getAllWindows().length === 0) createWindow()

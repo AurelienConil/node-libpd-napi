@@ -16,6 +16,9 @@ public:
     ~PdEngine();
     PdEngine(const Napi::CallbackInfo &info);
 
+    // Getters for internal state - permet d'accéder aux paramètres depuis le callback audio
+    int GetBlockSize() const { return blockSize_; }
+
 private:
     // JS methods
     Napi::Value start(const Napi::CallbackInfo &info);
