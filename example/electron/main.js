@@ -102,7 +102,7 @@ app.whenReady().then(() => {
     // Gérer la fermeture de toutes les fenêtres
     app.on('window-all-closed', function () {
         console.log('Toutes les fenêtres sont fermées, arrêt du moteur audio...')
-        
+
         // Arrêter le moteur PureData
         if (engine) {
             try {
@@ -110,18 +110,18 @@ app.whenReady().then(() => {
                 if (engine.closePatch) {
                     engine.closePatch()
                 }
-                
+
                 console.log('Arrêt du moteur audio...')
                 engine.stop()
                 console.log('Moteur audio arrêté avec succès!')
-                
+
                 // Libérer les ressources
                 engine = null
             } catch (err) {
                 console.error('Erreur lors de l\'arrêt du moteur audio:', err)
             }
         }
-        
+
         // Quitter l'application complètement
         app.quit()
     })
