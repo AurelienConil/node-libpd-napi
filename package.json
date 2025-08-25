@@ -9,8 +9,9 @@
         "build": "cmake-js compile",
         "rebuild": "cmake-js rebuild",
         "clean": "cmake-js clean",
-        "build:electron": "cmake-js compile -r electron",
-        "example:electron": "npm run build && cd example/electron && npm install && npm start",
+    "build:electron": "cmake-js compile -r electron",
+    "example:electron": "npm run build:electron && cd example/electron && npm install && npm start",
+    "example:electron:run": "cd example/electron && npm install && npm start",
         "test:smoke": "npm run build && node -e \"console.log(require('./').PdEngine ? 'OK' : 'FAIL')\""
     },
     "keywords": [

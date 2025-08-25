@@ -1,12 +1,8 @@
-const { contextBridge } = require('electron')
+const { contextBridge, ipcRenderer } = require('electron')
 
-try {
-    const addon = require('node-libpd-napi')
-    contextBridge.exposeInMainWorld('libpd', {
-        test: () => typeof addon.PdEngine === 'function'
-    })
-} catch (e) {
-    contextBridge.exposeInMainWorld('libpd', {
-        error: String(e)
-    })
-}
+contextBridge.exposeInMainWorld('libpd', {
+    start: () => ipcRenderer.invoke('libpd:start'),
+    stop: () => ipcRenderer.invoke('libpd:stop'),
+    openPatch: (nameOrPath) => ipcRenderer.invoke('libpd:openPatch', nameOrPath),
+    closePatch: () => ipcRenderer.invoke('libpd:closePatch')
+})
