@@ -4,6 +4,11 @@
 #include <string>
 #include <vector>
 
+#ifdef HAVE_MINIAUDIO
+// Forward declare global miniaudio types
+struct ma_device;
+#endif
+
 class PdEngine : public Napi::ObjectWrap<PdEngine>
 {
 public:
@@ -26,16 +31,18 @@ private:
     int sampleRate_ = 48000;
     int blockSize_ = 64;
     int channelsOut_ = 2;
+    int channelsIn_ = 0;
 
 #ifdef HAVE_MINIAUDIO
-    struct ma_device; // forward decl
-    ma_device *device_ = nullptr;
+    ::ma_device *device_ = nullptr;
 #endif
 
 #ifdef HAVE_LIBPD
     void *patch_ = nullptr; // libpd patch handle
 #endif
-    int channelsIn_ = 0;
+    // simple oscillator fallback when libpd is not available
+    double phase_ = 0.0;
     // Internal helpers (no N-API usage)
     void StopInternal();
+    static void splitPath(const std::string &full, std::string &dir, std::string &name);
 };

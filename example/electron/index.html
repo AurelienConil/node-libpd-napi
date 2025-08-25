@@ -4,21 +4,34 @@
 
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:;">
+    <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:;">
     <title>node-libpd-napi example</title>
     <style>
-        body { font-family: -apple-system, system-ui, sans-serif; padding: 24px; }
-        code { padding: 2px 6px; background: #f2f2f2; border-radius: 4px; }
-        .row { margin: 12px 0; }
+        body {
+            font-family: -apple-system, system-ui, sans-serif;
+            padding: 24px;
+        }
+
+        code {
+            padding: 2px 6px;
+            background: #f2f2f2;
+            border-radius: 4px;
+        }
+
+        .row {
+            margin: 12px 0;
+        }
     </style>
 </head>
 
 <body>
     <h1>node-libpd-napi + Electron</h1>
-    <p>Place your patch at <code>example/electron/patches/patch.pd</code>. It will be opened on app load. Click Start to enable audio.</p>
+    <p>Place your patch at <code>example/electron/patches/patch.pd</code>. It will be opened on app load. Click Start to
+        enable audio.</p>
     <div class="row">
-      <button id="btn-start">Start audio</button>
-      <button id="btn-stop">Stop audio</button>
+        <button id="btn-start">Start audio</button>
+        <button id="btn-stop">Stop audio</button>
     </div>
     <div id="status"></div>
     <script src="renderer.js"></script>

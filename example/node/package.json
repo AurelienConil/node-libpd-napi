@@ -1,13 +1,10 @@
 {
-    "name": "node-libpd-napi-electron-example",
+    "name": "node-libpd-napi-node-example",
     "version": "0.1.0",
     "private": true,
     "main": "main.js",
     "scripts": {
-        "start": "electron ."
-    },
-    "devDependencies": {
-        "electron": "^25.0.0"
+        "start": "node main.js"
     },
     "dependencies": {
         "node-libpd-napi": "file:../.."
