@@ -1,64 +1,27 @@
 <!doctype html>
+<!doctype html>
 <html>
 
 <head>
     <meta charset="utf-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:;">
     <title>node-libpd-napi example</title>
     <style>
-        body {
-            font-family: -apple-system, system-ui, sans-serif;
-            padding: 24px;
-        }
-
-        code {
-            padding: 2px 6px;
-            background: #f2f2f2;
-            border-radius: 4px;
-        }
+        body { font-family: -apple-system, system-ui, sans-serif; padding: 24px; }
+        code { padding: 2px 6px; background: #f2f2f2; border-radius: 4px; }
+        .row { margin: 12px 0; }
     </style>
 </head>
 
 <body>
-        <h1>node-libpd-napi + Electron</h1>
-        <p>Place your patch at <code>example/electron/patches/patch.pd</code>. It will be opened on app load. Click Start to enable audio.</p>
-        <div style="margin:12px 0;">
-            <button id="btn-start">Start audio</button>
-            <button id="btn-stop">Stop audio</button>
-        </div>
-        <div id="status"></div>
-        <script>
-            const statusEl = document.getElementById('status')
-            const btnStart = document.getElementById('btn-start')
-            const btnStop = document.getElementById('btn-stop')
-            const log = (msg) => { statusEl.textContent = msg }
-
-            btnStart.addEventListener('click', async () => {
-                try {
-                    await window.libpd.start()
-                    log('Audio started')
-                } catch (e) {
-                    log('Failed to start audio: ' + e)
-                }
-            })
-            btnStop.addEventListener('click', async () => {
-                try {
-                    await window.libpd.stop()
-                    log('Audio stopped')
-                } catch (e) {
-                    log('Failed to stop audio: ' + e)
-                }
-            })
-
-            // Try to open default patch (handled in main at startup; this is a no-op fallback)
-            ;(async () => {
-                try {
-                    await window.libpd.openPatch('patch.pd')
-                    log('Patch opened: patches/patch.pd')
-                } catch (e) {
-                    log('Waiting for patch... Put your file at patches/patch.pd')
-                }
-            })()
-        </script>
+    <h1>node-libpd-napi + Electron</h1>
+    <p>Place your patch at <code>example/electron/patches/patch.pd</code>. It will be opened on app load. Click Start to enable audio.</p>
+    <div class="row">
+      <button id="btn-start">Start audio</button>
+      <button id="btn-stop">Stop audio</button>
+    </div>
+    <div id="status"></div>
+    <script src="renderer.js"></script>
 </body>
 
 </html>

@@ -19,25 +19,32 @@ PdEngine::PdEngine(const Napi::CallbackInfo &info)
     : Napi::ObjectWrap<PdEngine>(info)
 {
     // TODO: Wire libpd init here when available
-        // Options: { sampleRate?: number, blockSize?: number, channelsOut?: number, channelsIn?: number }
-        if (info.Length() > 0 && info[0].IsObject()) {
-            auto obj = info[0].As<Napi::Object>();
-            if (obj.Has("sampleRate")) sampleRate_ = obj.Get("sampleRate").As<Napi::Number>().Int32Value();
-            if (obj.Has("blockSize")) blockSize_ = obj.Get("blockSize").As<Napi::Number>().Int32Value();
-            if (obj.Has("channelsOut")) channelsOut_ = obj.Get("channelsOut").As<Napi::Number>().Int32Value();
-            if (obj.Has("channelsIn")) channelsIn_ = obj.Get("channelsIn").As<Napi::Number>().Int32Value();
-        }
+    // Options: { sampleRate?: number, blockSize?: number, channelsOut?: number, channelsIn?: number }
+    if (info.Length() > 0 && info[0].IsObject())
+    {
+        auto obj = info[0].As<Napi::Object>();
+        if (obj.Has("sampleRate"))
+            sampleRate_ = obj.Get("sampleRate").As<Napi::Number>().Int32Value();
+        if (obj.Has("blockSize"))
+            blockSize_ = obj.Get("blockSize").As<Napi::Number>().Int32Value();
+        if (obj.Has("channelsOut"))
+            channelsOut_ = obj.Get("channelsOut").As<Napi::Number>().Int32Value();
+        if (obj.Has("channelsIn"))
+            channelsIn_ = obj.Get("channelsIn").As<Napi::Number>().Int32Value();
+    }
 
-    #ifdef HAVE_LIBPD
-        // Defer full init until start() when audio is set up
-    #endif
+#ifdef HAVE_LIBPD
+    // Defer full init until start() when audio is set up
+#endif
 }
 
-    PdEngine::~PdEngine() {
-        if (running_) {
-            StopInternal();
-        }
+PdEngine::~PdEngine()
+{
+    if (running_)
+    {
+        StopInternal();
     }
+}
 
 Napi::Value PdEngine::start(const Napi::CallbackInfo &info)
 {
@@ -67,7 +74,8 @@ Napi::Value PdEngine::stop(const Napi::CallbackInfo &info)
     return env.Undefined();
 }
 
-void PdEngine::StopInternal() {
+void PdEngine::StopInternal()
+{
 #ifdef HAVE_MINIAUDIO
     // stop and uninit device
 #endif
@@ -130,7 +138,8 @@ Napi::Value PdEngine::sendFloat(const Napi::CallbackInfo &info)
 #ifdef HAVE_LIBPD
     // libpd_float(recv.c_str(), (t_float)value);
 #else
-    (void)recv; (void)value;
+    (void)recv;
+    (void)value;
 #endif
     return env.Undefined();
 }
@@ -148,7 +157,8 @@ Napi::Value PdEngine::sendSymbol(const Napi::CallbackInfo &info)
 #ifdef HAVE_LIBPD
     // libpd_symbol(recv.c_str(), sym.c_str());
 #else
-    (void)recv; (void)sym;
+    (void)recv;
+    (void)sym;
 #endif
     return env.Undefined();
 }

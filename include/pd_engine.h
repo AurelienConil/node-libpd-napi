@@ -29,11 +29,11 @@ private:
 
 #ifdef HAVE_MINIAUDIO
     struct ma_device; // forward decl
-    ma_device* device_ = nullptr;
+    ma_device *device_ = nullptr;
 #endif
 
 #ifdef HAVE_LIBPD
-    void* patch_ = nullptr; // libpd patch handle
+    void *patch_ = nullptr; // libpd patch handle
 #endif
     int channelsIn_ = 0;
     // Internal helpers (no N-API usage)

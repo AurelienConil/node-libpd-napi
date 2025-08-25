@@ -4,8 +4,8 @@ const path = require('node:path')
 let engine = null
 
 function resolvePatchPath(relOrAbs) {
-  if (path.isAbsolute(relOrAbs)) return relOrAbs
-  return path.join(__dirname, 'patches', relOrAbs)
+    if (path.isAbsolute(relOrAbs)) return relOrAbs
+    return path.join(__dirname, 'patches', relOrAbs)
 }
 
 function createWindow() {
@@ -13,7 +13,12 @@ function createWindow() {
         width: 600,
         height: 380,
         webPreferences: {
-            preload: path.join(__dirname, 'preload.js')
+            preload: path.join(__dirname, 'preload.js'),
+            nodeIntegration: false,
+            contextIsolation: true,
+            sandbox: true,
+            webSecurity: true,
+            enableRemoteModule: false
         }
     })
 
