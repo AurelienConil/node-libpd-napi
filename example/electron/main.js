@@ -29,7 +29,8 @@ app.whenReady().then(() => {
     // Load native addon in main process
     try {
         console.log('Tentative de chargement du module node-libpd-napi...')
-        const addon = require('node-libpd-napi')
+        // Utiliser la version spécifique pour Electron qui gère automatiquement les bibliothèques partagées
+        const addon = require('node-libpd-napi/electron')
         console.log('Module chargé avec succès!')
 
         console.log('Création d\'une instance de PdEngine...')

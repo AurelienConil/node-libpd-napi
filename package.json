@@ -3,7 +3,12 @@
     "version": "0.1.0",
     "description": "Modern N-API bindings for libpd with optional miniaudio backend, Electron-ready (CMake + cmake-js)",
     "main": "index.js",
+    "electron": "electron.js",
     "gypfile": false,
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/AurelienConil/node-libpd-napi.git"
+    },
     "scripts": {
         "configure": "cmake-js configure",
         "build": "cmake-js compile",
@@ -12,8 +17,20 @@
         "build:electron": "cmake-js compile -r electron -v 25.0.0",
         "example:electron": "npm run build:electron && cd example/electron && npm install && npm start",
         "example:electron:run": "cd example/electron && npm install && npm start",
-        "test:smoke": "npm run build && node -e \"console.log(require('./').PdEngine ? 'OK' : 'FAIL')\""
+        "test:smoke": "npm run build && node -e \"console.log(require('./').PdEngine ? 'OK' : 'FAIL')\"",
+        "postinstall": "node scripts/post-install.js",
+        "prepare": "npm run build"
     },
+    "files": [
+        "index.js",
+        "electron.js",
+        "scripts/post-install.js",
+        "src/**",
+        "include/**",
+        "CMakeLists.txt",
+        "lib/**",
+        "binding.gyp"
+    ],
     "keywords": [
         "libpd",
         "puredata",
