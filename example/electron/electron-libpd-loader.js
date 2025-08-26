@@ -37,17 +37,17 @@ function setupLibpdForElectron() {
     const targetPaths = [
         // Dans le répertoire de l'application
         path.join(app.getAppPath(), libName),
-        
+
         // Dans le répertoire des ressources
         process.resourcesPath ? path.join(process.resourcesPath, libName) : null,
-        
+
         // À côté de l'exécutable Electron
         path.join(path.dirname(process.execPath), libName),
-        
+
         // Emplacements spécifiques où Electron recherche les bibliothèques (d'après l'erreur)
-        path.join(app.getAppPath(), 'node_modules', 'electron', 'dist', 'Electron.app', 'Contents', 'Frameworks', 
-                 'Electron Framework.framework', 'Versions', 'A', 'Libraries', libName),
-                 
+        path.join(app.getAppPath(), 'node_modules', 'electron', 'dist', 'Electron.app', 'Contents', 'Frameworks',
+            'Electron Framework.framework', 'Versions', 'A', 'Libraries', libName),
+
         path.join(app.getAppPath(), 'node_modules', 'electron', 'dist', 'Electron.app', 'Contents', 'Frameworks', libName)
     ].filter(Boolean); // Filtrer les valeurs null
 
@@ -57,7 +57,7 @@ function setupLibpdForElectron() {
         if (fs.existsSync(searchPath)) {
             sourcePath = searchPath;
             console.log(`Bibliothèque libpd trouvée: ${searchPath}`);
-            
+
             // Sur macOS, vérifier si on peut modifier la référence interne de la bibliothèque
             if (process.platform === 'darwin') {
                 try {
@@ -100,7 +100,7 @@ function setupLibpdForElectron() {
                     continue; // Passer à la prochaine cible si on ne peut pas créer le répertoire
                 }
             }
-            
+
             if (!fs.existsSync(targetPath)) {
                 console.log(`Copie de ${sourcePath} vers ${targetPath}...`);
                 fs.copyFileSync(sourcePath, targetPath);

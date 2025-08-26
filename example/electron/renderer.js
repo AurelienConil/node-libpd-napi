@@ -1,7 +1,6 @@
 (() => {
     const statusEl = document.getElementById('status')
-    const btnStart = document.getElementById('btn-start')
-    const btnStop = document.getElementById('btn-stop')
+    const audioToggle = document.getElementById('audio-toggle')
     const log = (msg) => { statusEl.textContent = msg }
 
     // Éléments des contrôles du patch
@@ -17,31 +16,27 @@
         try {
             const initialized = await window.libpd.isInitialized()
             if (initialized) {
-                log('PureData est initialisé et prêt!')
+                log('Ready')
             } else {
-                log('PureData n\'est pas disponible ou n\'a pas pu être initialisé.')
+                log('Not Ready')
             }
         } catch (err) {
-            log('Erreur lors de la vérification de l\'état de PureData: ' + err)
+            log('Error: ' + err)
         }
     }
 
-    // Contrôles audio
-    btnStart.addEventListener('click', async () => {
+    // Contrôle audio avec le toggle switch
+    audioToggle.addEventListener('change', async () => {
         try {
-            const result = await window.libpd.start()
-            log(result ? 'Audio démarré' : 'Échec du démarrage audio')
+            if (audioToggle.checked) {
+                const result = await window.libpd.start()
+                log(result ? 'On' : 'Failed')
+            } else {
+                const result = await window.libpd.stop()
+                log(result ? 'Off' : 'Failed')
+            }
         } catch (e) {
-            log('Erreur lors du démarrage audio: ' + e)
-        }
-    })
-
-    btnStop.addEventListener('click', async () => {
-        try {
-            const result = await window.libpd.stop()
-            log(result ? 'Audio arrêté' : 'Échec de l\'arrêt audio')
-        } catch (e) {
-            log('Erreur lors de l\'arrêt audio: ' + e)
+            log('Error: ' + e)
         }
     })
 
@@ -99,7 +94,15 @@
     // Vérifier l'état initial après un court délai pour s'assurer que tout est initialisé
     setTimeout(async () => {
         await checkInitialState()
-
+        
+        // Démarrer l'audio automatiquement au chargement
+        try {
+            const result = await window.libpd.start()
+            log(result ? 'On' : 'Failed')
+        } catch (e) {
+            log('Error: ' + e)
+        }
+        
         // Envoyer les valeurs initiales au patch
         await sendInitialValues()
     }, 500)

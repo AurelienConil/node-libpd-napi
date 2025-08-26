@@ -14,8 +14,8 @@ function resolvePatchPath(relOrAbs) {
 
 function createWindow() {
     const win = new BrowserWindow({
-        width: 600,
-        height: 380,
+        width: 800,
+        height: 600,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
@@ -69,25 +69,25 @@ function initializePd() {
             try {
                 const fs = require('fs');
                 const { execSync } = require('child_process');
-                
+
                 // Chercher la bibliothèque
                 const sourceLib = path.join(app.getAppPath(), 'node_modules', 'node-libpd-napi', 'lib', 'macos', 'libpd.dylib');
                 const localSourceLib = path.join(__dirname, 'libpd.dylib');
-                const actualSourceLib = fs.existsSync(sourceLib) ? sourceLib : 
-                                       (fs.existsSync(localSourceLib) ? localSourceLib : null);
-                
+                const actualSourceLib = fs.existsSync(sourceLib) ? sourceLib :
+                    (fs.existsSync(localSourceLib) ? localSourceLib : null);
+
                 if (actualSourceLib) {
                     // 1. Créer un répertoire temporaire pour les bibliothèques
                     const tmpLibDir = path.join(app.getPath('temp'), 'electron-libpd-libs');
                     if (!fs.existsSync(tmpLibDir)) {
                         fs.mkdirSync(tmpLibDir, { recursive: true });
                     }
-                    
+
                     // 2. Copier la bibliothèque
                     const tmpLibPath = path.join(tmpLibDir, 'libpd.dylib');
                     fs.copyFileSync(actualSourceLib, tmpLibPath);
                     console.log(`Bibliothèque copiée dans le dossier temporaire: ${tmpLibPath}`);
-                    
+
                     // 3. Modifier la référence interne
                     try {
                         execSync(`install_name_tool -id "@rpath/libpd.dylib" "${tmpLibPath}"`);
@@ -95,24 +95,24 @@ function initializePd() {
                     } catch (err) {
                         console.warn(`Avertissement: Impossible de modifier la référence interne: ${err.message}`);
                     }
-                    
+
                     // 4. Définir des variables d'environnement pour aider le chargement
                     process.env.DYLD_LIBRARY_PATH = tmpLibDir;
                     process.env.DYLD_FALLBACK_LIBRARY_PATH = tmpLibDir;
                     console.log(`Variables d'environnement DYLD_LIBRARY_PATH et DYLD_FALLBACK_LIBRARY_PATH définies à ${tmpLibDir}`);
-                    
+
                     // 5. Copier également la bibliothèque dans le Framework d'Electron si possible
                     try {
                         const electronFrameworkLibPath = path.join(
-                            app.getAppPath(), 'node_modules', 'electron', 'dist', 
+                            app.getAppPath(), 'node_modules', 'electron', 'dist',
                             'Electron.app', 'Contents', 'Frameworks', 'libpd.dylib'
                         );
                         const electronFrameworkDir = path.dirname(electronFrameworkLibPath);
-                        
+
                         if (!fs.existsSync(electronFrameworkDir)) {
                             fs.mkdirSync(electronFrameworkDir, { recursive: true });
                         }
-                        
+
                         fs.copyFileSync(actualSourceLib, electronFrameworkLibPath);
                         console.log(`Bibliothèque copiée dans Electron Framework: ${electronFrameworkLibPath}`);
                     } catch (frameworkErr) {
