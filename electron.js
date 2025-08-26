@@ -12,13 +12,13 @@ function setupElectronLibraryPaths() {
     // Dans Electron, on peut utiliser app.getAppPath() pour obtenir le chemin de l'application
     const appPath = app.getAppPath()
     const nodeModulesPath = path.join(appPath, 'node_modules', 'node-libpd-napi')
-    
+
     // Déterminer les chemins possibles pour la bibliothèque
     const possibleLibDirs = [
         path.join(nodeModulesPath, 'lib'),
         path.join(nodeModulesPath, 'build', 'Release')
     ]
-    
+
     // Déterminer le nom de la bibliothèque selon la plateforme
     let libName
     switch (process.platform) {
@@ -27,7 +27,7 @@ function setupElectronLibraryPaths() {
         case 'win32': libName = 'libpd.dll'; break
         default: throw new Error(`Plateforme non supportée: ${process.platform}`)
     }
-    
+
     // Chercher la bibliothèque dans les chemins possibles
     let libPath = null
     for (const dir of possibleLibDirs) {
@@ -37,7 +37,7 @@ function setupElectronLibraryPaths() {
             break
         }
     }
-    
+
     if (libPath) {
         // Copier la bibliothèque dans le répertoire de l'application si nécessaire
         const targetPath = path.join(appPath, libName)

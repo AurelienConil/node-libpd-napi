@@ -22,7 +22,7 @@ function copyLibrary() {
         const libName = getLibraryName();
         const libSrc = path.join(buildDir, libName);
         const libDest = path.join(rootDir, 'lib', libName);
-        
+
         // Créer le répertoire lib s'il n'existe pas
         if (!fs.existsSync(path.join(rootDir, 'lib'))) {
             fs.mkdirSync(path.join(rootDir, 'lib'), { recursive: true });
@@ -32,7 +32,7 @@ function copyLibrary() {
         if (fs.existsSync(libSrc)) {
             console.log(`Copie de ${libSrc} vers ${libDest}`);
             fs.copyFileSync(libSrc, libDest);
-            
+
             // Sur macOS, modifier la référence de bibliothèque pour utiliser @rpath
             if (process.platform === 'darwin') {
                 try {
@@ -42,7 +42,7 @@ function copyLibrary() {
                     console.warn(`Avertissement: Impossible de modifier la référence de bibliothèque: ${err.message}`);
                 }
             }
-            
+
             console.log(`${libName} a été installé avec succès dans le répertoire lib`);
         } else {
             console.warn(`Avertissement: ${libSrc} n'existe pas. Assurez-vous que le projet a été compilé.`);

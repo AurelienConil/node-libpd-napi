@@ -1,0 +1,137 @@
+#!/usr/bin/env node
+
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const { execSync } = require('child_process');
+
+// Détermine le nom de la bibliothèque selon la plateforme
+function getLibraryName() {
+    switch (process.platform) {
+        case 'darwin': return 'libpd.dylib';
+        case 'linux': return 'libpd.so';
+        case 'win32': return 'libpd.dll';
+        default: throw new Error(`Plateforme non supportée: ${process.platform}`);
+    }
+}
+
+function checkAndBuildLibPd() {
+    const rootDir = path.resolve(__dirname, '..');
+    const libpdDir = path.join(rootDir, 'third_party', 'libpd');
+    const libName = getLibraryName();
+    let libpdLibPath = '';
+    
+    // Déterminer le chemin de la bibliothèque libpd selon la plateforme
+    if (process.platform === 'darwin' || process.platform === 'linux') {
+        libpdLibPath = path.join(libpdDir, 'libs', libName);
+    } else if (process.platform === 'win32') {
+        libpdLibPath = path.join(libpdDir, 'libs', libName);
+    }
+    
+    // Vérifier si le répertoire libpd existe
+    if (!fs.existsSync(libpdDir)) {
+        console.warn(`Le répertoire ${libpdDir} n'existe pas.`);
+        console.warn(`Veuillez cloner libpd manuellement : git clone https://github.com/libpd/libpd.git ${libpdDir}`);
+        return false;
+    }
+    
+    // Vérifier si la bibliothèque existe déjà
+    if (fs.existsSync(libpdLibPath)) {
+        console.log(`La bibliothèque libpd (${libName}) existe déjà.`);
+        return true;
+    }
+    
+    // Compiler libpd si la bibliothèque n'existe pas
+    console.log(`Compilation de libpd dans ${libpdDir}...`);
+    try {
+        process.chdir(libpdDir);
+        
+        if (process.platform === 'darwin' || process.platform === 'linux') {
+            execSync('make', { stdio: 'inherit' });
+        } else if (process.platform === 'win32') {
+            // Sur Windows, la compilation peut nécessiter des outils spécifiques
+            // Vous devrez peut-être ajuster cette commande
+            execSync('mingw32-make', { stdio: 'inherit' });
+        }
+        
+        process.chdir(rootDir);
+        
+        // Vérifier à nouveau si la compilation a réussi
+        if (fs.existsSync(libpdLibPath)) {
+            console.log(`Compilation de libpd réussie : ${libpdLibPath}`);
+            return true;
+        } else {
+            console.error(`La compilation a échoué, la bibliothèque ${libName} n'a pas été créée.`);
+            return false;
+        }
+    } catch (err) {
+        console.error(`Erreur lors de la compilation de libpd : ${err.message}`);
+        return false;
+    }
+}
+
+function copyLibrary() {
+    try {
+        const rootDir = path.resolve(__dirname, '..');
+        const buildDir = path.join(rootDir, 'build', 'Release');
+        const libName = getLibraryName();
+        const libpdDir = path.join(rootDir, 'third_party', 'libpd');
+        
+        // Sources possibles pour libpd
+        const possibleSources = [
+            path.join(buildDir, libName),                 // Compilé par CMake
+            path.join(libpdDir, 'libs', libName),         // Compilé directement avec make
+            path.join(rootDir, 'lib', libName)            // Déjà dans le répertoire lib
+        ];
+        
+        // Destination pour la copie
+        const libDest = path.join(rootDir, 'lib', libName);
+        
+        // Créer le répertoire lib s'il n'existe pas
+        if (!fs.existsSync(path.join(rootDir, 'lib'))) {
+            fs.mkdirSync(path.join(rootDir, 'lib'), { recursive: true });
+        }
+
+        // Chercher une source valide
+        let libSrc = null;
+        for (const src of possibleSources) {
+            if (fs.existsSync(src)) {
+                libSrc = src;
+                break;
+            }
+        }
+
+        // Si aucune source n'est trouvée, essayer de compiler libpd
+        if (!libSrc) {
+            const success = checkAndBuildLibPd();
+            if (success) {
+                libSrc = path.join(libpdDir, 'libs', libName);
+            }
+        }
+        
+        // Vérifier à nouveau si la bibliothèque existe
+        if (libSrc && fs.existsSync(libSrc)) {
+            console.log(`Copie de ${libSrc} vers ${libDest}`);
+            fs.copyFileSync(libSrc, libDest);
+            
+            // Sur macOS, modifier la référence de bibliothèque pour utiliser @rpath
+            if (process.platform === 'darwin') {
+                try {
+                    execSync(`install_name_tool -id "@rpath/${libName}" "${libDest}"`);
+                    console.log(`Référence de bibliothèque modifiée avec install_name_tool`);
+                } catch (err) {
+                    console.warn(`Avertissement: Impossible de modifier la référence de bibliothèque: ${err.message}`);
+                }
+            }
+            
+            console.log(`${libName} a été installé avec succès dans le répertoire lib`);
+        } else {
+            console.error(`Aucune source pour ${libName} n'a été trouvée. Veuillez compiler libpd manuellement.`);
+        }
+    } catch (err) {
+        console.error(`Erreur lors de l'installation de la bibliothèque: ${err.message}`);
+    }
+}
+
+// Exécuter la fonction principale
+copyLibrary();

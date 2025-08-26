@@ -15,7 +15,7 @@ function setupLibraryPaths() {
         case 'win32': libName = 'libpd.dll'; break
         default: throw new Error(`Plateforme non supportée: ${os.platform()}`)
     }
-    
+
     // Ajouter des chemins de recherche pour la bibliothèque
     const possiblePaths = [
         // 1. Dans le répertoire lib du module
@@ -25,28 +25,28 @@ function setupLibraryPaths() {
         // 3. Dans le répertoire courant (pour le développement)
         __dirname
     ]
-    
+
     // Sur macOS, configurer la variable d'environnement DYLD_LIBRARY_PATH
     if (os.platform() === 'darwin') {
-        const currentPaths = process.env.DYLD_LIBRARY_PATH ? 
+        const currentPaths = process.env.DYLD_LIBRARY_PATH ?
             process.env.DYLD_LIBRARY_PATH.split(':') : []
-            
+
         // Ajouter nos chemins s'ils ne sont pas déjà présents
         for (const p of possiblePaths) {
             if (!currentPaths.includes(p) && fs.existsSync(p)) {
                 currentPaths.push(p)
             }
         }
-        
+
         // Mettre à jour la variable d'environnement
         process.env.DYLD_LIBRARY_PATH = currentPaths.join(':')
-        
+
         // Sur macOS, copier la bibliothèque à côté du .node si elle n'y est pas déjà
         // (solution de secours pour les cas où DYLD_LIBRARY_PATH ne fonctionne pas)
         try {
             const nodePath = bindings.getRoot(__dirname)
             const targetPath = path.join(path.dirname(nodePath), libName)
-            
+
             // Chercher la bibliothèque dans les chemins possibles
             for (const p of possiblePaths) {
                 const sourcePath = path.join(p, libName)

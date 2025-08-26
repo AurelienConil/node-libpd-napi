@@ -45,19 +45,32 @@ npm run example:electron
 
 ## Integrating libpd and miniaudio
 
-By default, the project compiles without bundling third parties. Place sources like so:
+By default, the project compiles without bundling third parties. You need to install these dependencies manually:
+
+```
+# Clone the dependencies into third_party directory
+mkdir -p third_party
+git clone https://github.com/libpd/libpd.git third_party/libpd
+git clone https://github.com/mackron/miniaudio.git third_party/miniaudio
+
+# Compile libpd (this will create libpd.dylib, libpd.so, or libpd.dll)
+cd third_party/libpd
+make
+
+# Return to the project root
+cd ../..
+```
+
+After running these commands, your directory structure should look like:
 
 ```
 third_party/
   libpd/
-    libpd_wrapper/z_libpd.h
-    # ... libpd sources
+    libs/
+      libpd.dylib (or .so/.dll depending on platform)
   miniaudio/
     miniaudio.h
 ```
-
-CMake detects them automatically and defines `HAVE_LIBPD` / `HAVE_MINIAUDIO`.
-Extend `src/pd_engine.cc` to call libpd init/open/close and wire the audio callback via miniaudio.
 
 ## JavaScript API
 
