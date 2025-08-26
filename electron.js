@@ -11,46 +11,115 @@ const libpd = require('./index')
 function setupElectronLibraryPaths() {
     // Dans Electron, on peut utiliser app.getAppPath() pour obtenir le chemin de l'application
     const appPath = app.getAppPath()
-    const nodeModulesPath = path.join(appPath, 'node_modules', 'node-libpd-napi')
 
-    // Déterminer les chemins possibles pour la bibliothèque
-    const possibleLibDirs = [
-        path.join(nodeModulesPath, 'lib'),
-        path.join(nodeModulesPath, 'build', 'Release')
+    // Plusieurs chemins potentiels pour trouver le module
+    let moduleRoots = [
+        // 1. Installation locale (développement)
+        __dirname,
+        // 2. Installation dans node_modules
+        path.join(appPath, 'node_modules', 'node-libpd-napi'),
+        // 3. Installation dans node_modules parent (workspace)
+        path.join(appPath, '..', 'node_modules', 'node-libpd-napi')
     ]
 
     // Déterminer le nom de la bibliothèque selon la plateforme
-    let libName
+    let libName, platformDir
     switch (process.platform) {
-        case 'darwin': libName = 'libpd.dylib'; break
-        case 'linux': libName = 'libpd.so'; break
-        case 'win32': libName = 'libpd.dll'; break
-        default: throw new Error(`Plateforme non supportée: ${process.platform}`)
-    }
-
-    // Chercher la bibliothèque dans les chemins possibles
-    let libPath = null
-    for (const dir of possibleLibDirs) {
-        const testPath = path.join(dir, libName)
-        if (fs.existsSync(testPath)) {
-            libPath = testPath
+        case 'darwin':
+            libName = 'libpd.dylib';
+            platformDir = 'macos';
             break
-        }
+        case 'linux':
+            libName = 'libpd.so';
+            platformDir = 'linux';
+            break
+        case 'win32':
+            libName = 'libpd.dll';
+            platformDir = 'win';
+            break
+        default:
+            throw new Error(`Plateforme non supportée: ${process.platform}`)
     }
 
-    if (libPath) {
-        // Copier la bibliothèque dans le répertoire de l'application si nécessaire
-        const targetPath = path.join(appPath, libName)
-        if (!fs.existsSync(targetPath)) {
-            try {
-                fs.copyFileSync(libPath, targetPath)
-                console.log(`Bibliothèque ${libName} copiée dans ${appPath} pour Electron`)
-            } catch (err) {
-                console.warn(`Avertissement: Impossible de copier ${libName} vers ${appPath}: ${err.message}`)
+    // Liste complète des chemins à vérifier pour chaque racine de module
+    const getAllPossibleLibPaths = (moduleRoot) => {
+        return [
+            // 1. Dans le répertoire lib spécifique à la plateforme (recommandé)
+            path.join(moduleRoot, 'lib', platformDir, libName),
+            // 2. Dans le répertoire lib central
+            path.join(moduleRoot, 'lib', libName),
+            // 3. Dans le répertoire de build
+            path.join(moduleRoot, 'build', 'Release', libName),
+            // 4. À la racine du module (pour les tests)
+            path.join(moduleRoot, libName)
+        ];
+    };
+
+    console.log(`Electron: Recherche de ${libName} pour la plateforme ${process.platform}...`)
+
+    // Chercher la bibliothèque dans tous les chemins possibles
+    let libPath = null
+
+    // Vérifier chaque racine de module
+    for (const moduleRoot of moduleRoots) {
+        if (!fs.existsSync(moduleRoot)) continue;
+
+        console.log(`Vérification du module à: ${moduleRoot}`)
+        const possiblePaths = getAllPossibleLibPaths(moduleRoot);
+
+        // Vérifier chaque chemin possible pour cette racine
+        for (const possiblePath of possiblePaths) {
+            if (fs.existsSync(possiblePath)) {
+                libPath = possiblePath;
+                console.log(`Bibliothèque trouvée: ${possiblePath}`)
+                break;
             }
         }
+
+        if (libPath) break;
+    }
+
+    // Si la bibliothèque est trouvée, la copier dans plusieurs emplacements stratégiques
+    if (libPath) {
+        const targetLocations = [
+            // 1. Dans le répertoire de l'application (nécessaire pour Electron packagé)
+            path.join(appPath, libName),
+
+            // 2. Dans le répertoire du module natif (pour que dlopen puisse la trouver)
+            (() => {
+                try {
+                    // Chercher où se trouve le module natif .node
+                    const bindings = require('bindings');
+                    const nodePath = bindings.getRoot(__dirname);
+                    return path.join(path.dirname(nodePath), libName);
+                } catch (e) {
+                    return null;
+                }
+            })(),
+
+            // 3. Dans le répertoire de l'exécutable Electron
+            path.join(process.resourcesPath, libName),
+
+            // 4. Dans plusieurs emplacements connus d'Electron pour charger les bibliothèques
+            path.join(process.resourcesPath, 'app.asar', libName),
+            path.join(process.execPath, '..', libName)
+        ].filter(Boolean); // Filtrer les emplacements null
+
+        // Copier la bibliothèque dans chaque emplacement cible
+        for (const targetPath of targetLocations) {
+            try {
+                if (!fs.existsSync(targetPath)) {
+                    console.log(`Copie de ${libPath} vers ${targetPath}`);
+                    fs.copyFileSync(libPath, targetPath);
+                }
+            } catch (err) {
+                console.warn(`Avertissement: Impossible de copier vers ${targetPath}: ${err.message}`);
+            }
+        }
+
+        console.log(`Configuration des bibliothèques partagées pour Electron terminée.`)
     } else {
-        console.warn(`Avertissement: Impossible de trouver ${libName} dans les chemins de recherche`)
+        console.warn(`ATTENTION: Impossible de trouver ${libName}. Le module risque de ne pas fonctionner correctement.`)
     }
 }
 

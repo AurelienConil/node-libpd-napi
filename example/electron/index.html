@@ -22,18 +22,44 @@
         .row {
             margin: 12px 0;
         }
+
+        input[type="range"] {
+            width: 100%;
+            max-width: 400px;
+            margin: 10px 0;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
     </style>
 </head>
 
 <body>
     <h1>node-libpd-napi + Electron</h1>
-    <p>L'audio est entièrement géré par le processus principal.</p>
+    <p>L'audio est maintenant géré dans le script de préchargement (preload.js).</p>
     <p>Le patch <code>example/electron/patches/patch.pd</code> est automatiquement ouvert au démarrage.</p>
     <div class="row">
         <button id="btn-start">Start audio</button>
         <button id="btn-stop">Stop audio</button>
     </div>
     <div id="status"></div>
+
+    <h3>Contrôles du patch</h3>
+    <div class="row">
+        <label for="speed-slider">Speed: <span id="speed-value">500</span></label>
+        <input type="range" id="speed-slider" min="200" max="1000" value="500">
+    </div>
+    <div class="row">
+        <label for="filter-slider">Filter: <span id="filter-value">300</span></label>
+        <input type="range" id="filter-slider" min="20" max="1000" value="300">
+    </div>
+    <div class="row">
+        <label for="cutoff-slider">Cutoff: <span id="cutoff-value">200</span></label>
+        <input type="range" id="cutoff-slider" min="50" max="500" value="200">
+    </div>
     <script src="renderer.js"></script>
 </body>
 

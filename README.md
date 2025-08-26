@@ -72,6 +72,22 @@ third_party/
     miniaudio.h
 ```
 
+## Platform-specific libraries
+
+For distribution as an npm package, you need to place platform-specific libraries in the appropriate directories:
+
+```
+lib/
+  macos/
+    libpd.dylib
+  linux/
+    libpd.so
+  win/
+    libpd.dll
+```
+
+The module's post-install script will automatically detect the user's platform and copy the correct library file where it's needed. This approach allows the module to work in both Node.js and Electron environments without manual file copying.
+
 ## JavaScript API
 
 ### Node.js Usage
@@ -141,6 +157,12 @@ npm run build:electron
 ```
 
 The module automatically handles the shared libraries for you - no need to manually copy files.
+
+### Distribution
+
+When publishing the package to npm, the platform-specific libraries in the `lib/{macos,linux,win}` directories will be included in the package. The post-install script will handle deployment of the appropriate library for the user's platform.
+
+If you're developing the module locally, you can run `node scripts/post-install.js` to test the library deployment process.
 
 ## License
 
