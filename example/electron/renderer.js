@@ -11,6 +11,9 @@
     const filterValue = document.getElementById('filter-value')
     const cutoffValue = document.getElementById('cutoff-value')
 
+    // Configuration audio actuelle
+    let currentAudioConfig = null
+
     // Vérifier l'état initial de PdEngine
     const checkInitialState = async () => {
         try {
@@ -91,10 +94,44 @@
         }
     }
 
+    // Récupérer la configuration audio actuelle
+    const getAudioConfig = async () => {
+        try {
+            currentAudioConfig = await window.libpd.getConfig()
+            console.log('Configuration audio actuelle:', currentAudioConfig)
+        } catch (e) {
+            console.error('Erreur lors de la récupération de la configuration audio:', e)
+        }
+    }
+
+    // Écouter les changements de configuration audio
+    window.libpd.onAudioSettingsChanged((data) => {
+        console.log('Configuration audio modifiée:', data)
+        currentAudioConfig = data.config || currentAudioConfig
+
+        // Mettre à jour l'interface si nécessaire
+        // Par exemple, afficher un message ou mettre à jour des indicateurs
+        const message = Object.keys(data)
+            .filter(key => key !== 'config')
+            .map(key => `${key}: ${data[key]}`)
+            .join(', ')
+
+        if (message) {
+            log('Config: ' + message)
+            // Réinitialiser le message après 3 secondes
+            setTimeout(() => {
+                log(audioToggle.checked ? 'On' : 'Off')
+            }, 3000)
+        }
+    })
+
     // Vérifier l'état initial après un court délai pour s'assurer que tout est initialisé
     setTimeout(async () => {
         await checkInitialState()
-        
+
+        // Récupérer la configuration audio actuelle
+        await getAudioConfig()
+
         // Démarrer l'audio automatiquement au chargement
         try {
             const result = await window.libpd.start()
@@ -102,7 +139,7 @@
         } catch (e) {
             log('Error: ' + e)
         }
-        
+
         // Envoyer les valeurs initiales au patch
         await sendInitialValues()
     }, 500)

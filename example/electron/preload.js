@@ -20,5 +20,13 @@ contextBridge.exposeInMainWorld('libpd', {
     // Envoyer des messages au patch
     sendFloat: async (receiver, value) => await ipcRenderer.invoke('libpd:sendFloat', receiver, value),
     sendBang: async (receiver) => await ipcRenderer.invoke('libpd:sendBang', receiver),
-    sendSymbol: async (receiver, symbol) => await ipcRenderer.invoke('libpd:sendSymbol', receiver, symbol)
+    sendSymbol: async (receiver, symbol) => await ipcRenderer.invoke('libpd:sendSymbol', receiver, symbol),
+
+    // Récupérer la configuration audio
+    getConfig: async () => await ipcRenderer.invoke('libpd:getConfig'),
+
+    // Événements
+    onAudioSettingsChanged: (callback) => {
+        ipcRenderer.on('audio-settings-changed', (_, data) => callback(data));
+    }
 })

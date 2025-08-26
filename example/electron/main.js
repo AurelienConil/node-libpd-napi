@@ -1,10 +1,8 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 const setupLibpdForElectron = require('./electron-libpd-loader')
-
-// Variable globale pour l'instance de PdEngine
-let engine = null
-let pdInitialized = false
+const pdEngineManager = require('./pd-engine-manager')
+const { createApplicationMenu } = require('./menu')
 
 // Fonction pour résoudre les chemins des patchs
 function resolvePatchPath(relOrAbs) {
@@ -15,7 +13,7 @@ function resolvePatchPath(relOrAbs) {
 function createWindow() {
     const win = new BrowserWindow({
         width: 800,
-        height: 600,
+        height: 750,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
@@ -27,6 +25,9 @@ function createWindow() {
     })
 
     win.loadFile('index.html')
+
+    // Créer et attacher le menu personnalisé en utilisant le module externe
+    createApplicationMenu(win, pdEngineManager)
 }
 
 app.whenReady().then(() => {
@@ -59,7 +60,7 @@ app.whenReady().then(() => {
 // Initialiser PureData
 function initializePd() {
     try {
-        console.log('Tentative de chargement du module node-libpd-napi...')
+        console.log('Tentative d\'initialisation du moteur PureData...')
 
         // Pour le débogage, afficher tous les chemins de recherche des modules
         console.log('Module search paths:', module.paths)
@@ -124,62 +125,27 @@ function initializePd() {
             }
         }
 
-        // Utiliser la version spécifique pour Electron qui gère automatiquement les bibliothèques partagées
-        // En cas d'échec, essayer d'autres chemins
-        let addon
-        try {
-            addon = require('node-libpd-napi/electron')
-        } catch (e) {
-            console.log('Échec du chargement via electron.js, tentative de chargement direct:', e.message)
-            try {
-                // Essayer le chemin direct vers le module
-                addon = require('../../electron')
-            } catch (e2) {
-                console.log('Échec du chargement direct, tentative avec le module principal:', e2.message)
-                try {
-                    addon = require('../../')
-                } catch (e3) {
-                    throw new Error('Échec de toutes les méthodes de chargement: ' + e3.message);
+        // Initialiser le gestionnaire de moteur PureData
+        if (pdEngineManager.initialize()) {
+            console.log('Moteur PureData initialisé avec succès')
+
+            // Démarrer le moteur audio
+            if (pdEngineManager.start()) {
+                console.log('Moteur audio démarré avec succès')
+
+                // Ouvrir le patch
+                const patchPath = resolvePatchPath('patch.pd')
+                if (pdEngineManager.openPatch(patchPath)) {
+                    console.log(`Patch ouvert avec succès: ${patchPath}`)
+                    return true
                 }
             }
         }
-        console.log('Module chargé avec succès!')
 
-        console.log('Création d\'une instance de PdEngine...')
-        // Configuration des paramètres audio
-        engine = new addon.PdEngine({
-            sampleRate: 48000,
-            blockSize: 1024, // Configure la taille du buffer audio dans miniaudio
-            channelsOut: 2,
-            channelsIn: 0
-        })
-        console.log('Instance créée avec succès!')
-
-        // Démarrage du moteur audio
-        try {
-            console.log('Démarrage du moteur audio...')
-            engine.start()
-            console.log('Moteur audio démarré!')
-        } catch (err) {
-            console.error('ERREUR lors du démarrage du moteur audio:', err)
-        }
-
-        // Ouverture du patch
-        try {
-            const patchPath = resolvePatchPath('patch.pd')
-            console.log(`Ouverture du patch: ${patchPath}`)
-            engine.openPatch(patchPath)
-            console.log('Patch ouvert avec succès!')
-        } catch (err) {
-            console.error('ERREUR lors de l\'ouverture du patch:', err)
-        }
-
-        pdInitialized = true;
-        return true
+        return false
     } catch (e) {
         console.error('Échec du chargement ou de l\'initialisation de node-libpd-napi:', e)
         console.error('Stack trace:', e.stack)
-        pdInitialized = false;
         return false
     }
 }
@@ -188,39 +154,23 @@ function initializePd() {
 function setupIpcHandlers() {
     // État de l'initialisation
     ipcMain.handle('libpd:isInitialized', () => {
-        return pdInitialized && engine !== null
+        return pdEngineManager.isInitialized()
     })
 
     // Contrôle audio
     ipcMain.handle('libpd:start', () => {
-        if (!engine) return false
-        try {
-            engine.start()
-            return true
-        } catch (e) {
-            console.error('Erreur lors du démarrage audio:', e)
-            return false
-        }
+        return pdEngineManager.start()
     })
 
     ipcMain.handle('libpd:stop', () => {
-        if (!engine) return false
-        try {
-            engine.stop()
-            return true
-        } catch (e) {
-            console.error('Erreur lors de l\'arrêt audio:', e)
-            return false
-        }
+        return pdEngineManager.stop()
     })
 
     // Gestion des patchs
     ipcMain.handle('libpd:openPatch', (event, fileNameOrPath) => {
-        if (!engine) return false
         try {
             const full = resolvePatchPath(fileNameOrPath)
-            engine.openPatch(full)
-            return full
+            return pdEngineManager.openPatch(full) ? full : false
         } catch (e) {
             console.error('Erreur lors de l\'ouverture du patch:', e)
             return false
@@ -228,50 +178,25 @@ function setupIpcHandlers() {
     })
 
     ipcMain.handle('libpd:closePatch', () => {
-        if (!engine) return false
-        try {
-            if (engine.closePatch) {
-                engine.closePatch()
-            }
-            return true
-        } catch (e) {
-            console.error('Erreur lors de la fermeture du patch:', e)
-            return false
-        }
+        return pdEngineManager.closePatch()
     })
 
     // Envoyer des messages au patch
     ipcMain.handle('libpd:sendFloat', (event, receiver, value) => {
-        if (!engine) return false
-        try {
-            engine.sendFloat(receiver, value)
-            return true
-        } catch (e) {
-            console.error(`Erreur lors de l'envoi de ${value} à ${receiver}:`, e)
-            return false
-        }
+        return pdEngineManager.sendFloat(receiver, value)
     })
 
     ipcMain.handle('libpd:sendBang', (event, receiver) => {
-        if (!engine) return false
-        try {
-            engine.sendBang(receiver)
-            return true
-        } catch (e) {
-            console.error(`Erreur lors de l'envoi d'un bang à ${receiver}:`, e)
-            return false
-        }
+        return pdEngineManager.sendBang(receiver)
     })
 
     ipcMain.handle('libpd:sendSymbol', (event, receiver, symbol) => {
-        if (!engine) return false
-        try {
-            engine.sendSymbol(receiver, symbol)
-            return true
-        } catch (e) {
-            console.error(`Erreur lors de l'envoi de ${symbol} à ${receiver}:`, e)
-            return false
-        }
+        return pdEngineManager.sendSymbol(receiver, symbol)
+    })
+
+    // Récupérer et modifier la configuration audio
+    ipcMain.handle('libpd:getConfig', () => {
+        return pdEngineManager.getConfig()
     })
 }
 
@@ -296,20 +221,11 @@ app.on('window-all-closed', function () {
 
 // Fonction de nettoyage pour arrêter proprement PureData
 function cleanupPureData() {
-    if (engine) {
+    if (pdEngineManager.isInitialized()) {
         try {
-            console.log('Fermeture du patch...')
-            if (engine.closePatch) {
-                engine.closePatch()
-            }
-
-            console.log('Arrêt du moteur audio...')
-            engine.stop()
-            console.log('Moteur audio arrêté avec succès!')
-
-            // Libérer la référence
-            engine = null
-            pdInitialized = false
+            console.log('Nettoyage des ressources PureData...')
+            pdEngineManager.cleanup()
+            console.log('Nettoyage terminé avec succès!')
         } catch (err) {
             console.error('Erreur lors du nettoyage des ressources PureData:', err)
         }
