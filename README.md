@@ -6,7 +6,7 @@ Modern N-API bindings for [libpd](https://github.com/libpd/libpd), designed to w
 
 - Native binding via N-API (`node-addon-api`)
 - CMake build orchestrated by `cmake-js`
-- Automatic handling of libpd shared libraries
+- libpd lié statiquement: pas de .dylib/.so à copier
 - Electron-ready with dedicated integration
 - Easy audio configuration with customizable parameters
 - Minimal JS API surface you can extend
@@ -45,7 +45,7 @@ npm run example:electron
 
 ## Integrating libpd and miniaudio
 
-By default, the project compiles without bundling third parties. You need to install these dependencies manually:
+By default, we vendor libpd and build it from source; it's linked statically into the addon. You'll need sources locally:
 
 ```
 # Clone the dependencies into third_party directory
@@ -53,40 +53,21 @@ mkdir -p third_party
 git clone https://github.com/libpd/libpd.git third_party/libpd
 git clone https://github.com/mackron/miniaudio.git third_party/miniaudio
 
-# Compile libpd (this will create libpd.dylib, libpd.so, or libpd.dll)
-cd third_party/libpd
-make
-
-# Return to the project root
-cd ../..
+# libpd will be built by CMake as part of this project; no separate make is required.
 ```
 
 After running these commands, your directory structure should look like:
 
 ```
 third_party/
-  libpd/
-    libs/
-      libpd.dylib (or .so/.dll depending on platform)
+  libpd/ (git clone)
   miniaudio/
     miniaudio.h
 ```
 
 ## Platform-specific libraries
 
-For distribution as an npm package, you need to place platform-specific libraries in the appropriate directories:
-
-```
-lib/
-  macos/
-    libpd.dylib
-  linux/
-    libpd.so
-  win/
-    libpd.dll
-```
-
-The module's post-install script will automatically detect the user's platform and copy the correct library file where it's needed. This approach allows the module to work in both Node.js and Electron environments without manual file copying.
+Not required anymore for runtime. libpd is linked statically into the .node binary.
 
 ## JavaScript API
 
@@ -124,7 +105,7 @@ In your Electron main process:
 
 ```js
 const { app } = require('electron')
-const { PdEngine } = require('node-libpd-napi/electron')
+const { PdEngine } = require('node-libpd-napi')
 
 app.whenReady().then(() => {
   // Create PdEngine instance
@@ -156,13 +137,11 @@ npm install
 npm run build:electron
 ```
 
-The module automatically handles the shared libraries for you - no need to manually copy files.
+No need to copy shared libraries; libpd is embedded.
 
 ### Distribution
 
-When publishing the package to npm, the platform-specific libraries in the `lib/{macos,linux,win}` directories will be included in the package. The post-install script will handle deployment of the appropriate library for the user's platform.
-
-If you're developing the module locally, you can run `node scripts/post-install.js` to test the library deployment process.
+When publishing to npm, no external libpd.{dylib,so,dll} needs to be shipped. The addon contains libpd.
 
 ## License
 

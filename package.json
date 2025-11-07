@@ -18,17 +18,14 @@
         "example:electron": "npm run build:electron && cd example/electron && npm install && npm start",
         "example:electron:run": "cd example/electron && npm install && npm start",
         "test:smoke": "npm run build && node -e \"console.log(require('./').PdEngine ? 'OK' : 'FAIL')\"",
-        "postinstall": "node scripts/post-install.js",
         "prepare": "npm run build"
     },
     "files": [
         "index.js",
         "electron.js",
-        "scripts/post-install.js",
         "src/**",
         "include/**",
         "CMakeLists.txt",
-        "lib/**",
         "binding.gyp"
     ],
     "keywords": [

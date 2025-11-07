@@ -1,38 +1,38 @@
-# Solution pour intégrer libpd dans votre module npm
+# Intégrer libpd dans le module
 
-Pour rendre votre module `node-libpd-napi` facile à utiliser pour les autres développeurs, vous avez deux options principales pour gérer la dépendance à libpd.
+Le projet compile libpd depuis ses sources et la lie statiquement dans le binaire `.node`. Aucun fichier `libpd.dylib/.so/.dll` externe n'est requis au runtime.
 
-## Option 1: Utiliser Git Submodules (recommandé)
+## Récupérer les sources
 
-Cette approche vous permet d'inclure la source de libpd dans votre projet sans augmenter la taille de votre dépôt.
+Option A — submodule Git:
 
 ```bash
-# Dans votre dépôt principal
-cd /Users/aurelienconil/Documents/Node/node-libpd-napi
+cd node-libpd-napi
 mkdir -p third_party
 git submodule add https://github.com/libpd/libpd.git third_party/libpd
-git commit -m "Add libpd as submodule"
+git submodule update --init --recursive
 ```
 
-Ensuite, mettez à jour votre README pour indiquer aux utilisateurs de récupérer les sous-modules :
-
-```markdown
-## Installation depuis le dépôt Git
+Option B — clone direct:
 
 ```bash
-git clone https://github.com/AurelienConil/node-libpd-napi.git
 cd node-libpd-napi
-git submodule update --init --recursive  # Important: récupère libpd
-npm install
+mkdir -p third_party
+git clone https://github.com/libpd/libpd.git third_party/libpd
 ```
+
+Miniaudio (facultatif) — header only:
+
+```bash
+git clone https://github.com/mackron/miniaudio.git third_party/miniaudio
 ```
 
-## Option 2: Précompiler libpd et inclure la bibliothèque
+Ensuite, construisez:
 
-Si vous préférez éviter les sous-modules, vous pouvez précompiler libpd et inclure les bibliothèques binaires :
+```bash
+npm run build
+```
 
-1. Compilez libpd pour chaque plateforme cible
-2. Placez les bibliothèques dans `lib/` (libpd.dylib, libpd.so, libpd.dll)
-3. Ajoutez ces fichiers à votre dépôt Git
-
-Cette approche est plus simple pour les utilisateurs mais requiert de maintenir des binaires pour chaque plateforme.
+Notes:
+- CMake construit `libpd_static` et l’addon la lie. Pas de copie de bibliothèques dynamiques.
+- Pour Electron, utilisez `npm run build:electron` pour recompiler contre l’ABI d’Electron.

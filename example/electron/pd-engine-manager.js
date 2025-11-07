@@ -34,18 +34,8 @@ class PdEngineManager {
                 ...config
             }
 
-            // Essayer plusieurs chemins pour charger le module
-            try {
-                this.addon = require('node-libpd-napi/electron')
-            } catch (e) {
-                console.log('Échec du chargement via electron.js, tentative de chargement direct:', e.message)
-                try {
-                    this.addon = require('../../electron')
-                } catch (e2) {
-                    console.log('Échec du chargement direct, tentative avec le module principal:', e2.message)
-                    this.addon = require('../../')
-                }
-            }
+            // Charger le module natif directement
+            this.addon = require('node-libpd-napi')
             console.log('Module node-libpd-napi chargé avec succès')
 
             // Créer une instance du moteur PureData
