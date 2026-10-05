@@ -11,6 +11,50 @@
 extern "C"
 {
 #include "z_libpd.h"
+#include "z_queued.h"
+}
+
+// Messages sent by Pd to bound receivers. The queued hooks below are invoked on the
+// JS thread by libpd_queued_receive_pd_messages() (called from pollMessages()),
+// so this buffer is never touched by the audio thread.
+struct PdAtom
+{
+    bool isFloat;
+    float f;
+    std::string s;
+};
+
+struct PdMessage
+{
+    std::string receiver;
+    std::string selector; // "bang", "float", "symbol", "list" or a message selector
+    std::vector<PdAtom> args;
+};
+
+static std::vector<PdMessage> g_pending;
+
+static std::vector<PdAtom> toAtoms(int argc, t_atom *argv)
+{
+    std::vector<PdAtom> atoms;
+    for (int i = 0; i < argc; ++i)
+    {
+        t_atom *a = argv + i;
+        if (libpd_is_float(a))
+            atoms.push_back({true, libpd_get_float(a), ""});
+        else
+            atoms.push_back({false, 0.0f, libpd_get_symbol(a)});
+    }
+    return atoms;
+}
+
+static void onPrint(const char *s) { printf("[pd] %s", s); }
+static void onBang(const char *recv) { g_pending.push_back({recv, "bang", {}}); }
+static void onFloat(const char *recv, float x) { g_pending.push_back({recv, "float", {{true, x, ""}}}); }
+static void onSymbol(const char *recv, const char *sym) { g_pending.push_back({recv, "symbol", {{false, 0.0f, sym}}}); }
+static void onList(const char *recv, int argc, t_atom *argv) { g_pending.push_back({recv, "list", toAtoms(argc, argv)}); }
+static void onMessage(const char *recv, const char *msg, int argc, t_atom *argv)
+{
+    g_pending.push_back({recv, msg, toAtoms(argc, argv)});
 }
 #endif
 
@@ -23,7 +67,11 @@ Napi::Object PdEngine::Init(Napi::Env env, Napi::Object exports)
                                        PdEngine::InstanceMethod("closePatch", &PdEngine::closePatch),
                                        PdEngine::InstanceMethod("sendBang", &PdEngine::sendBang),
                                        PdEngine::InstanceMethod("sendFloat", &PdEngine::sendFloat),
-                                       PdEngine::InstanceMethod("sendSymbol", &PdEngine::sendSymbol)});
+                                       PdEngine::InstanceMethod("sendSymbol", &PdEngine::sendSymbol),
+                                       PdEngine::InstanceMethod("bind", &PdEngine::bind),
+                                       PdEngine::InstanceMethod("unbind", &PdEngine::unbind),
+                                       PdEngine::InstanceMethod("pollMessages", &PdEngine::pollMessages),
+                                       PdEngine::InstanceMethod("getDollarZero", &PdEngine::getDollarZero)});
 
     exports.Set("PdEngine", func);
     return exports;
@@ -67,7 +115,14 @@ Napi::Value PdEngine::start(const Napi::CallbackInfo &info)
         return env.Undefined();
 
 #ifdef HAVE_LIBPD
-    libpd_init();
+    // Queued init: Pd -> JS messages go through a ring buffer (audio thread safe)
+    libpd_queued_init();
+    libpd_set_queued_printhook(onPrint);
+    libpd_set_queued_banghook(onBang);
+    libpd_set_queued_floathook(onFloat);
+    libpd_set_queued_symbolhook(onSymbol);
+    libpd_set_queued_listhook(onList);
+    libpd_set_queued_messagehook(onMessage);
     libpd_init_audio(channelsIn_, channelsOut_, sampleRate_);
 
     // Calculer le nombre de ticks (1 tick = 64 samples dans PureData)
@@ -288,6 +343,83 @@ Napi::Value PdEngine::sendSymbol(const Napi::CallbackInfo &info)
     (void)sym;
 #endif
     return env.Undefined();
+}
+
+Napi::Value PdEngine::bind(const Napi::CallbackInfo &info)
+{
+    Napi::Env env = info.Env();
+    if (info.Length() < 1 || !info[0].IsString())
+    {
+        Napi::TypeError::New(env, "receiver name string required").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    std::string recv = info[0].As<Napi::String>().Utf8Value();
+#ifdef HAVE_LIBPD
+    if (bindings_.find(recv) == bindings_.end())
+        bindings_[recv] = libpd_bind(recv.c_str());
+#endif
+    return env.Undefined();
+}
+
+Napi::Value PdEngine::unbind(const Napi::CallbackInfo &info)
+{
+    Napi::Env env = info.Env();
+    if (info.Length() < 1 || !info[0].IsString())
+    {
+        Napi::TypeError::New(env, "receiver name string required").ThrowAsJavaScriptException();
+        return env.Null();
+    }
+    std::string recv = info[0].As<Napi::String>().Utf8Value();
+#ifdef HAVE_LIBPD
+    auto it = bindings_.find(recv);
+    if (it != bindings_.end())
+    {
+        libpd_unbind(it->second);
+        bindings_.erase(it);
+    }
+#endif
+    return env.Undefined();
+}
+
+// Returns [{ receiver, selector, args: (number|string)[] }] received since the last call.
+Napi::Value PdEngine::pollMessages(const Napi::CallbackInfo &info)
+{
+    Napi::Env env = info.Env();
+    Napi::Array result = Napi::Array::New(env);
+#ifdef HAVE_LIBPD
+    if (!running_)
+        return result;
+    libpd_queued_receive_pd_messages();
+    for (size_t i = 0; i < g_pending.size(); ++i)
+    {
+        const PdMessage &m = g_pending[i];
+        Napi::Object obj = Napi::Object::New(env);
+        obj.Set("receiver", m.receiver);
+        obj.Set("selector", m.selector);
+        Napi::Array args = Napi::Array::New(env, m.args.size());
+        for (size_t j = 0; j < m.args.size(); ++j)
+        {
+            if (m.args[j].isFloat)
+                args.Set((uint32_t)j, Napi::Number::New(env, m.args[j].f));
+            else
+                args.Set((uint32_t)j, Napi::String::New(env, m.args[j].s));
+        }
+        obj.Set("args", args);
+        result.Set((uint32_t)i, obj);
+    }
+    g_pending.clear();
+#endif
+    return result;
+}
+
+Napi::Value PdEngine::getDollarZero(const Napi::CallbackInfo &info)
+{
+    Napi::Env env = info.Env();
+#ifdef HAVE_LIBPD
+    if (patch_)
+        return Napi::Number::New(env, libpd_getdollarzero(patch_));
+#endif
+    return env.Null();
 }
 
 void PdEngine::splitPath(const std::string &full, std::string &dir, std::string &name)

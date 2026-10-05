@@ -86,6 +86,14 @@ pd.sendBang('start')
 pd.sendFloat('freq', 440)
 pd.sendSymbol('message', 'hello')
 
+// Receive messages sent by the patch to a name (like [r name])
+pd.bind('level')
+setInterval(() => {
+  for (const { receiver, selector, args } of pd.pollMessages()) console.log(receiver, selector, args)
+}, 15)
+pd.getDollarZero() // $0 of the opened patch
+pd.unbind('level')
+
 // Stop the audio engine when done
 pd.stop()
 ```

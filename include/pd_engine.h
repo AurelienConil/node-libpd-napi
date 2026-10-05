@@ -3,6 +3,7 @@
 #include <napi.h>
 #include <string>
 #include <vector>
+#include <map>
 
 #ifdef HAVE_MINIAUDIO
 // Forward declare global miniaudio types
@@ -28,6 +29,10 @@ private:
     Napi::Value sendBang(const Napi::CallbackInfo &info);
     Napi::Value sendFloat(const Napi::CallbackInfo &info);
     Napi::Value sendSymbol(const Napi::CallbackInfo &info);
+    Napi::Value bind(const Napi::CallbackInfo &info);
+    Napi::Value unbind(const Napi::CallbackInfo &info);
+    Napi::Value pollMessages(const Napi::CallbackInfo &info);
+    Napi::Value getDollarZero(const Napi::CallbackInfo &info);
 
     // State
     bool running_ = false;
@@ -42,6 +47,7 @@ private:
 
 #ifdef HAVE_LIBPD
     void *patch_ = nullptr; // libpd patch handle
+    std::map<std::string, void *> bindings_; // receiver name -> libpd_bind handle
 #endif
     // simple oscillator fallback when libpd is not available
     double phase_ = 0.0;
