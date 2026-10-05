@@ -18,8 +18,8 @@ function resolvePatchPath(relOrAbs) {
 
 function createWindow() {
     const win = new BrowserWindow({
-        width: 600,
-        height: 380,
+        width: 800,
+        height: 600,
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
