@@ -6,7 +6,7 @@ Modern N-API bindings for [libpd](https://github.com/libpd/libpd), designed to w
 
 - Native binding via N-API (`node-addon-api`)
 - CMake build orchestrated by `cmake-js`
-- Automatic handling of libpd shared libraries
+- libpd built from source (git submodule) and linked statically: a single self-contained `.node`
 - Electron-ready with dedicated integration
 - Easy audio configuration with customizable parameters
 - Minimal JS API surface you can extend
@@ -17,7 +17,9 @@ Modern N-API bindings for [libpd](https://github.com/libpd/libpd), designed to w
 - `src/` C++ addon sources (`addon.cc`, `pd_engine.cc`)
 - `include/` addon headers (`pd_engine.h`)
 - `CMakeLists.txt` build definition
-- `third_party/` (not checked-in) expected location for `libpd/` and `miniaudio/`
+- `third_party/libpd/` libpd sources (git submodule)
+- `include/miniaudio.h` miniaudio single-header audio backend
+- `scripts/check-mac-app.sh` verifies a packaged macOS `.app`
 - `example/electron/` runnable Electron demo
 
 ## Build prerequisites
@@ -30,63 +32,33 @@ Modern N-API bindings for [libpd](https://github.com/libpd/libpd), designed to w
 
 ## Quick start
 
-Install dependencies and build the addon:
-
 ```sh
-npm install
-npm run build
+git clone --recursive https://github.com/AurelienConil/node-libpd-napi.git
+cd node-libpd-napi
+npm install            # also builds the addon (libpd is compiled from source)
 ```
 
-Run the Electron example:
+Already cloned without `--recursive`? Run `git submodule update --init --recursive`.
+
+Run the Electron example, or package it as a `.app`:
 
 ```sh
 npm run example:electron
+cd example/electron && npm run dist
 ```
 
-## Integrating libpd and miniaudio
+## How libpd is linked
 
-By default, the project compiles without bundling third parties. You need to install these dependencies manually:
+libpd (`third_party/libpd`, git submodule) is compiled with its own CMake as a
+static library and linked into `build/Release/node-libpd-napi.node`. The addon
+depends only on system libraries, so there is no shared library to locate at
+runtime, in development or inside a packaged app. No binaries are committed.
 
+Check it with:
+
+```sh
+otool -L build/Release/node-libpd-napi.node   # macOS: only /System and /usr/lib entries
 ```
-# Clone the dependencies into third_party directory
-mkdir -p third_party
-git clone https://github.com/libpd/libpd.git third_party/libpd
-git clone https://github.com/mackron/miniaudio.git third_party/miniaudio
-
-# Compile libpd (this will create libpd.dylib, libpd.so, or libpd.dll)
-cd third_party/libpd
-make
-
-# Return to the project root
-cd ../..
-```
-
-After running these commands, your directory structure should look like:
-
-```
-third_party/
-  libpd/
-    libs/
-      libpd.dylib (or .so/.dll depending on platform)
-  miniaudio/
-    miniaudio.h
-```
-
-## Platform-specific libraries
-
-For distribution as an npm package, you need to place platform-specific libraries in the appropriate directories:
-
-```
-lib/
-  macos/
-    libpd.dylib
-  linux/
-    libpd.so
-  win/
-    libpd.dll
-```
-
-The module's post-install script will automatically detect the user's platform and copy the correct library file where it's needed. This approach allows the module to work in both Node.js and Electron environments without manual file copying.
 
 ## JavaScript API
 
@@ -124,7 +96,7 @@ In your Electron main process:
 
 ```js
 const { app } = require('electron')
-const { PdEngine } = require('node-libpd-napi/electron')
+const { PdEngine } = require('node-libpd-napi')
 
 app.whenReady().then(() => {
   // Create PdEngine instance
@@ -139,7 +111,6 @@ app.whenReady().then(() => {
   pd.start()
   pd.openPatch('path/to/patch.pd')
 
-  // The module handles the shared libraries automatically
 })
 ```
 
@@ -156,13 +127,12 @@ npm install
 npm run build:electron
 ```
 
-The module automatically handles the shared libraries for you - no need to manually copy files.
+### Packaging an Electron app
 
-### Distribution
-
-When publishing the package to npm, the platform-specific libraries in the `lib/{macos,linux,win}` directories will be included in the package. The post-install script will handle deployment of the appropriate library for the user's platform.
-
-If you're developing the module locally, you can run `node scripts/post-install.js` to test the library deployment process.
+See `example/electron/README.md`: the `.node` must be unpacked
+from `app.asar` (`asarUnpack`), as well as Pd patches, because native code
+cannot read inside an asar archive. `scripts/check-mac-app.sh` verifies a
+packaged `.app`.
 
 ## License
 

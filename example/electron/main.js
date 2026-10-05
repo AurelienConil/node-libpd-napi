@@ -1,15 +1,19 @@
+// Electron main process: loads node-libpd-napi, runs the Pd patch and exposes it to the renderer via IPC.
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
-const setupLibpdForElectron = require('./electron-libpd-loader')
 
 // Variable globale pour l'instance de PdEngine
 let engine = null
 let pdInitialized = false
 
+// libpd is C code and cannot read inside app.asar: patches are unpacked
+// (see asarUnpack in package.json), so point to the real directory.
+const PATCHES_DIR = path.join(__dirname, 'patches').replace('app.asar', 'app.asar.unpacked')
+
 // Fonction pour résoudre les chemins des patchs
 function resolvePatchPath(relOrAbs) {
     if (path.isAbsolute(relOrAbs)) return relOrAbs
-    return path.join(__dirname, 'patches', relOrAbs)
+    return path.join(PATCHES_DIR, relOrAbs)
 }
 
 function createWindow() {
@@ -30,20 +34,10 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-    // Précharger la bibliothèque libpd avant toute chose
-    console.log('Configuration des bibliothèques partagées pour Electron...')
-    const libpdReady = setupLibpdForElectron()
-
-    if (libpdReady) {
-        console.log('Bibliothèque libpd correctement configurée')
-
-        // Initialiser libpd dans le processus principal
-        initializePd()
-
-        // Configurer les gestionnaires IPC
+    if (initializePd()) {
         setupIpcHandlers()
     } else {
-        console.error('ERREUR: Configuration de libpd échouée')
+        console.error('ERREUR: initialisation de libpd échouée')
         // Continuer quand même pour que l'UI soit visible, mais l'audio ne fonctionnera pas
     }
 
@@ -59,90 +53,8 @@ app.whenReady().then(() => {
 // Initialiser PureData
 function initializePd() {
     try {
-        console.log('Tentative de chargement du module node-libpd-napi...')
-
-        // Pour le débogage, afficher tous les chemins de recherche des modules
-        console.log('Module search paths:', module.paths)
-
-        // Solution alternative pour macOS: copier manuellement la bibliothèque dans un dossier accessible
-        if (process.platform === 'darwin') {
-            try {
-                const fs = require('fs');
-                const { execSync } = require('child_process');
-                
-                // Chercher la bibliothèque
-                const sourceLib = path.join(app.getAppPath(), 'node_modules', 'node-libpd-napi', 'lib', 'macos', 'libpd.dylib');
-                const localSourceLib = path.join(__dirname, 'libpd.dylib');
-                const actualSourceLib = fs.existsSync(sourceLib) ? sourceLib : 
-                                       (fs.existsSync(localSourceLib) ? localSourceLib : null);
-                
-                if (actualSourceLib) {
-                    // 1. Créer un répertoire temporaire pour les bibliothèques
-                    const tmpLibDir = path.join(app.getPath('temp'), 'electron-libpd-libs');
-                    if (!fs.existsSync(tmpLibDir)) {
-                        fs.mkdirSync(tmpLibDir, { recursive: true });
-                    }
-                    
-                    // 2. Copier la bibliothèque
-                    const tmpLibPath = path.join(tmpLibDir, 'libpd.dylib');
-                    fs.copyFileSync(actualSourceLib, tmpLibPath);
-                    console.log(`Bibliothèque copiée dans le dossier temporaire: ${tmpLibPath}`);
-                    
-                    // 3. Modifier la référence interne
-                    try {
-                        execSync(`install_name_tool -id "@rpath/libpd.dylib" "${tmpLibPath}"`);
-                        console.log('Référence interne modifiée avec succès');
-                    } catch (err) {
-                        console.warn(`Avertissement: Impossible de modifier la référence interne: ${err.message}`);
-                    }
-                    
-                    // 4. Définir des variables d'environnement pour aider le chargement
-                    process.env.DYLD_LIBRARY_PATH = tmpLibDir;
-                    process.env.DYLD_FALLBACK_LIBRARY_PATH = tmpLibDir;
-                    console.log(`Variables d'environnement DYLD_LIBRARY_PATH et DYLD_FALLBACK_LIBRARY_PATH définies à ${tmpLibDir}`);
-                    
-                    // 5. Copier également la bibliothèque dans le Framework d'Electron si possible
-                    try {
-                        const electronFrameworkLibPath = path.join(
-                            app.getAppPath(), 'node_modules', 'electron', 'dist', 
-                            'Electron.app', 'Contents', 'Frameworks', 'libpd.dylib'
-                        );
-                        const electronFrameworkDir = path.dirname(electronFrameworkLibPath);
-                        
-                        if (!fs.existsSync(electronFrameworkDir)) {
-                            fs.mkdirSync(electronFrameworkDir, { recursive: true });
-                        }
-                        
-                        fs.copyFileSync(actualSourceLib, electronFrameworkLibPath);
-                        console.log(`Bibliothèque copiée dans Electron Framework: ${electronFrameworkLibPath}`);
-                    } catch (frameworkErr) {
-                        console.warn(`Impossible de copier dans Electron Framework: ${frameworkErr.message}`);
-                    }
-                }
-            } catch (err) {
-                console.warn(`Erreur lors de la préparation de la bibliothèque: ${err.message}`);
-            }
-        }
-
-        // Utiliser la version spécifique pour Electron qui gère automatiquement les bibliothèques partagées
-        // En cas d'échec, essayer d'autres chemins
-        let addon
-        try {
-            addon = require('node-libpd-napi/electron')
-        } catch (e) {
-            console.log('Échec du chargement via electron.js, tentative de chargement direct:', e.message)
-            try {
-                // Essayer le chemin direct vers le module
-                addon = require('../../electron')
-            } catch (e2) {
-                console.log('Échec du chargement direct, tentative avec le module principal:', e2.message)
-                try {
-                    addon = require('../../')
-                } catch (e3) {
-                    throw new Error('Échec de toutes les méthodes de chargement: ' + e3.message);
-                }
-            }
-        }
+        console.log('Chargement du module node-libpd-napi...')
+        const addon = require('node-libpd-napi')
         console.log('Module chargé avec succès!')
 
         console.log('Création d\'une instance de PdEngine...')

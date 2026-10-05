@@ -3,11 +3,54 @@
     "version": "0.1.0",
     "private": true,
     "main": "main.js",
+    "homepage": "./",
     "scripts": {
-        "start": "electron ."
+        "start": "electron .",
+        "build": "electron-builder",
+        "build:mac": "electron-builder --mac",
+        "build:win": "electron-builder --win",
+        "build:linux": "electron-builder --linux",
+        "build:complete": "node build.js",
+        "dist": "npm run build:complete"
+    },
+    "build": {
+        "appId": "com.example.node-libpd-napi",
+        "productName": "Node LibPD NAPI Example",
+        "directories": {
+            "output": "dist"
+        },
+        "files": [
+            "main.js",
+            "index.html",
+            "renderer.js",
+            "preload.js",
+            "patches/**/*",
+            "!node_modules/node-libpd-napi/**",
+            "node_modules/node-libpd-napi/package.json",
+            "node_modules/node-libpd-napi/index.js",
+            "node_modules/node-libpd-napi/electron.js",
+            "node_modules/node-libpd-napi/build/Release/node-libpd-napi.node"
+        ],
+        "asarUnpack": [
+            "node_modules/node-libpd-napi/build/Release/*.node",
+            "patches/**/*"
+        ],
+        "mac": {
+            "category": "public.app-category.music",
+            "target": [
+                "dmg"
+            ]
+        },
+        "win": {
+            "target": "nsis"
+        },
+        "linux": {
+            "target": "AppImage"
+        }
     },
     "devDependencies": {
-        "electron": "^25.0.0"
+        "electron": "^25.0.0",
+        "electron-builder": "^24.13.3"
     },
     "dependencies": {
         "node-libpd-napi": "file:../.."

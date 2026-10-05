@@ -50,21 +50,24 @@ if (DEFINED CMAKE_JS_LIB)
   target_link_libraries(${PROJECT_NAME} PRIVATE ${CMAKE_JS_LIB})
 endif()
 
-# libpd integration (headers only initially) — prefer third_party but allow include/ fallback
-set(_LIBPD_HEADERS
-  ${LIBPD_ROOT}/libpd_wrapper/z_libpd.h
-  ${CMAKE_CURRENT_SOURCE_DIR}/include/z_libpd.h
-)
-set(_LIBPD_FOUND FALSE)
-foreach(_hdr IN LISTS _LIBPD_HEADERS)
-  if (EXISTS ${_hdr})
-    get_filename_component(_HDR_DIR ${_hdr} DIRECTORY)
-    target_include_directories(${PROJECT_NAME} PRIVATE ${_HDR_DIR} ${LIBPD_ROOT})
-    target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_LIBPD=1)
-    set(_LIBPD_FOUND TRUE)
-    break()
-  endif()
-endforeach()
+# libpd: built from source (git submodule third_party/libpd) and linked
+# statically into the addon, so the .node has no libpd shared library to locate.
+if (NOT EXISTS ${LIBPD_ROOT}/CMakeLists.txt OR NOT EXISTS ${LIBPD_ROOT}/pure-data/src/m_pd.h)
+  message(FATAL_ERROR "libpd sources missing in ${LIBPD_ROOT}. Run: git submodule update --init --recursive")
+endif()
+set(LIBPD_STATIC ON  CACHE BOOL "" FORCE)
+set(LIBPD_SHARED OFF CACHE BOOL "" FORCE)
+set(PD_BUILD_C_EXAMPLES OFF CACHE BOOL "" FORCE)
+add_subdirectory(${LIBPD_ROOT} ${CMAKE_BINARY_DIR}/libpd EXCLUDE_FROM_ALL)
+# The static archive is linked into a shared library (.node)
+set_target_properties(libpd_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+find_package(Threads REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE libpd_static Threads::Threads ${CMAKE_DL_LIBS})
+if (UNIX AND NOT APPLE)
+  target_link_libraries(${PROJECT_NAME} PRIVATE m)
+endif()
+target_compile_definitions(${PROJECT_NAME} PRIVATE HAVE_LIBPD=1)
 
 # miniaudio integration (single header) — allow include/ fallback
 if (WITH_MINIAUDIO)
@@ -84,24 +87,6 @@ if (WITH_MINIAUDIO)
   endforeach()
   if (NOT _MA_FOUND)
     message(STATUS "miniaudio.h not found; audio output disabled. Place it under third_party/miniaudio/ or include/.")
-  endif()
-endif()
-
-# Link libpd if found
-if (_LIBPD_FOUND)
-  if (EXISTS ${LIBPD_ROOT}/libs/libpd.dylib OR EXISTS ${LIBPD_ROOT}/libs/libpd.so OR EXISTS ${LIBPD_ROOT}/libs/libpd.dll)
-    set(LIBPD_LIB "${LIBPD_ROOT}/libs/libpd${CMAKE_SHARED_LIBRARY_SUFFIX}")
-    if (APPLE)
-      # Sur macOS, nous devons ajuster le chemin de recherche de la bibliothèque
-      add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND install_name_tool -change "libs/libpd.dylib" "@loader_path/libpd.dylib" "$<TARGET_FILE:${PROJECT_NAME}>"
-      )
-      # Copier la bibliothèque dans le répertoire de sortie
-      add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy "${LIBPD_LIB}" "$<TARGET_FILE_DIR:${PROJECT_NAME}>"
-      )
-    endif()
-    target_link_libraries(${PROJECT_NAME} PRIVATE ${LIBPD_LIB})
   endif()
 endif()
 

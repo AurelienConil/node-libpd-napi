@@ -18,18 +18,15 @@
         "example:electron": "npm run build:electron && cd example/electron && npm install && npm start",
         "example:electron:run": "cd example/electron && npm install && npm start",
         "test:smoke": "npm run build && node -e \"console.log(require('./').PdEngine ? 'OK' : 'FAIL')\"",
-        "postinstall": "node scripts/post-install.js",
         "prepare": "npm run build"
     },
     "files": [
         "index.js",
         "electron.js",
-        "scripts/post-install.js",
         "src/**",
         "include/**",
         "CMakeLists.txt",
-        "lib/**",
-        "binding.gyp"
+        "build/Release/node-libpd-napi.node"
     ],
     "keywords": [
         "libpd",
@@ -43,7 +40,6 @@
     "license": "MIT",
     "devDependencies": {
         "cmake-js": "^7.3.0",
-        "node-addon-api": "^8.2.1",
-        "bindings": "^1.5.0"
+        "node-addon-api": "^8.2.1"
     }
 }
